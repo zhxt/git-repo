@@ -706,10 +706,9 @@ class Project(object):
           # commits are not yet merged upstream.  We do not want
           # to rewrite the published commits so we punt.
           #
-          syncbuf.info(self,
-                       "branch %s is published but is now %d commits behind",
-                       branch.name,
-                       len(upstream_gain))
+          syncbuf.fail(self,
+                       "branch %s is published (but not merged) and is now %d commits behind"
+                       % (branch.name, len(upstream_gain)))
         return
       elif pub == head:
         # All published commits are merged, and thus we are a
@@ -728,7 +727,7 @@ class Project(object):
     last_mine = None
     cnt_mine = 0
     for commit in local_changes:
-      commit_id, committer_email = commit.split(' ', 2)
+      commit_id, committer_email = commit.split(' ', 1)
       if committer_email == self.UserEmail:
         last_mine = commit_id
         cnt_mine += 1
@@ -1142,7 +1141,34 @@ class Project(object):
   def _InitWorkTree(self):
     dotgit = os.path.join(self.worktree, '.git')
     if not os.path.exists(dotgit):
+<<<<<<< HEAD   (840ed0 Fix to display the usage message of the command download whe)
       self._LinkWorkTree()
+=======
+      os.makedirs(dotgit)
+
+      for name in ['config',
+                   'description',
+                   'hooks',
+                   'info',
+                   'logs',
+                   'objects',
+                   'packed-refs',
+                   'refs',
+                   'rr-cache',
+                   'svn']:
+        try:
+          src = os.path.join(self.gitdir, name)
+          dst = os.path.join(dotgit, name)
+          if os.path.islink(dst) or not os.path.exists(dst):
+            os.symlink(relpath(src, dst), dst)
+          else:
+            raise GitError('cannot overwrite a local work tree')
+        except OSError, e:
+          if e.errno == errno.EPERM:
+            raise GitError('filesystem must support symlinks')
+          else:
+            raise
+>>>>>>> BRANCH (9452e4 Automatically install Gerrit Code Review's commit-msg hook)
 
       _lwrite(os.path.join(dotgit, HEAD), '%s\n' % self.GetRevisionId())
 
