@@ -1,0 +1,8 @@
+Change-Id: I9bb1816bdc2c21811ea6a87ba6eb745bdf3c041c
+Code-Review+2: Shawn Pearce <sop@google.com>
+Verified+1: Nico Sallembien <nsallembien@google.com>
+Submitted-by: Nico Sallembien <nsallembien@google.com>
+Submitted-at: Thu, 10 Dec 2009 16:40:28 -0700
+Reviewed-on: https://review.source.android.com/12846
+Project: tools/repo
+Branch: refs/heads/stable

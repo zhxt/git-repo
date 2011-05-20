@@ -1,0 +1,8 @@
+Change-Id: If1a6b14fdc5402f9ed765a8a342d9c07c5b91e2d
+Code-Review+2: Shawn Pearce <sop@google.com>
+Verified+1: Shawn Pearce <sop@google.com>
+Submitted-by: Shawn Pearce <sop@google.com>
+Submitted-at: Fri, 03 Jul 2009 11:15:53 -0700
+Reviewed-on: https://review.source.android.com/10592
+Project: tools/repo
+Branch: refs/heads/master

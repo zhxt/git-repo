@@ -1,0 +1,9 @@
+Change-Id: Ifb5c8fd948dea211cd8f43477855de44c273a1bf
+Code-Review+1: Ficus Kirkpatrick <ficus@android.com>
+Code-Review+2: Shawn Pearce <sop@google.com>
+Verified+1: Shawn Pearce <sop@google.com>
+Submitted-by: Shawn Pearce <sop@google.com>
+Submitted-at: Tue, 16 Jun 2009 15:48:18 -0700
+Reviewed-on: https://review.source.android.com/10440
+Project: tools/repo
+Branch: refs/heads/master

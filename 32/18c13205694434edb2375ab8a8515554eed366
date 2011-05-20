@@ -1,0 +1,9 @@
+Change-Id: I3218c13205694434edb2375ab8a8515554eed366
+Code-Review+2: Shawn Pearce <sop@google.com>
+Verified+1: Shawn Pearce <sop@google.com>
+Code-Review+1: Marc-Antoine Ruel <maruel@chromium.org>
+Submitted-by: Shawn Pearce <sop@google.com>
+Submitted-at: Tue, 07 Dec 2010 10:50:33 -0700
+Reviewed-on: https://review.source.android.com/19391
+Project: tools/repo
+Branch: refs/heads/master
