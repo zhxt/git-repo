@@ -1,0 +1,7 @@
+Code-Review+2: Shawn Pearce <sop@google.com>
+Verified+1: Shawn Pearce <sop@google.com>
+Submitted-by: Shawn Pearce <sop@google.com>
+Submitted-at: Fri, 25 May 2012 07:52:24 -0700
+Reviewed-on: https://gerrit-review.googlesource.com/35570
+Project: git-repo
+Branch: refs/heads/maint
