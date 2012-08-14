@@ -19,6 +19,8 @@ import platform
 import re
 import sys
 
+import manifest_loader
+
 from error import NoSuchProjectError
 from error import InvalidProjectGroupsError
 
@@ -27,7 +29,6 @@ class Command(object):
   """
 
   common = False
-  manifest = None
   _optparse = None
 
   def WantPager(self, opt):
@@ -59,11 +60,29 @@ class Command(object):
     """Perform the action, after option parsing is complete.
     """
     raise NotImplementedError
+<<<<<<< HEAD   (17f85e Omit all default groups when generating a manifest)
+=======
+ 
+  @property
+  def manifest(self):
+    return self.GetManifest()
+
+  def GetManifest(self, reparse=False, type=None):
+    return manifest_loader.GetManifest(self.repodir,
+                                       reparse=reparse,
+                                       type=type)
+>>>>>>> BRANCH (e7a3bc Merge branch 'stable')
 
   def GetProjects(self, args, missing_ok=False):
     """A list of projects that match the arguments.
     """
     all = self.manifest.projects
+
+    mp = self.manifest.manifestProject
+    if mp.relpath == '.':
+      all = dict(all)
+      all[mp.name] = mp
+
     result = []
 
     mp = self.manifest.manifestProject
@@ -92,7 +111,9 @@ class Command(object):
             for p in all.values():
               by_path[p.worktree] = p
 
-          if os.path.exists(path):
+          try:
+            project = by_path[path]
+          except KeyError:
             oldpath = None
             while path \
               and path != oldpath \
@@ -103,11 +124,6 @@ class Command(object):
               except KeyError:
                 oldpath = path
                 path = os.path.dirname(path)
-          else:
-            try:
-              project = by_path[path]
-            except KeyError:
-              pass
 
         if not project:
           raise NoSuchProjectError(arg)

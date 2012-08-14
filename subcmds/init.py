@@ -25,6 +25,9 @@ from error import ManifestParseError
 from project import SyncBuffer
 from git_config import GitConfig
 from git_command import git_require, MIN_GIT_VERSION
+from manifest_submodule import SubmoduleManifest
+from manifest_xml import XmlManifest
+from subcmds.sync import _ReloadManifest
 
 class Init(InteractiveCommand, MirrorSafeCommand):
   common = True
@@ -76,9 +79,15 @@ to update the working directory files.
     g.add_option('-b', '--manifest-branch',
                  dest='manifest_branch',
                  help='manifest branch or revision', metavar='REVISION')
-    g.add_option('-m', '--manifest-name',
-                 dest='manifest_name', default='default.xml',
-                 help='initial manifest file', metavar='NAME.xml')
+    g.add_option('-o', '--origin',
+                 dest='manifest_origin',
+                 help="use REMOTE instead of 'origin' to track upstream",
+                 metavar='REMOTE')
+    if isinstance(self.manifest, XmlManifest) \
+    or not self.manifest.manifestProject.Exists:
+      g.add_option('-m', '--manifest-name',
+                   dest='manifest_name', default='default.xml',
+                   help='initial manifest file', metavar='NAME.xml')
     g.add_option('--mirror',
                  dest='mirror', action='store_true',
                  help='mirror the forrest')
@@ -110,11 +119,34 @@ to update the working directory files.
                  dest='no_repo_verify', action='store_true',
                  help='do not verify repo source code')
 
+<<<<<<< HEAD   (17f85e Omit all default groups when generating a manifest)
     # Other
     g = p.add_option_group('Other options')
     g.add_option('--config-name',
                  dest='config_name', action="store_true", default=False,
                  help='Always prompt for name/e-mail')
+=======
+  def _ApplyOptions(self, opt, is_new):
+    m = self.manifest.manifestProject
+
+    if is_new:
+      if opt.manifest_origin:
+        m.remote.name = opt.manifest_origin
+
+      if opt.manifest_branch:
+        m.revisionExpr = opt.manifest_branch
+      else:
+        m.revisionExpr = 'refs/heads/master'
+    else:
+      if opt.manifest_origin:
+        print >>sys.stderr, 'fatal: cannot change origin name'
+        sys.exit(1)
+
+      if opt.manifest_branch:
+        m.revisionExpr = opt.manifest_branch
+      else:
+        m.PreSync()
+>>>>>>> BRANCH (e7a3bc Merge branch 'stable')
 
   def _SyncManifest(self, opt):
     m = self.manifest.manifestProject
@@ -130,16 +162,7 @@ to update the working directory files.
           % GitConfig.ForUser().UrlInsteadOf(opt.manifest_url)
       m._InitGitDir()
 
-      if opt.manifest_branch:
-        m.revisionExpr = opt.manifest_branch
-      else:
-        m.revisionExpr = 'refs/heads/master'
-    else:
-      if opt.manifest_branch:
-        m.revisionExpr = opt.manifest_branch
-      else:
-        m.PreSync()
-
+    self._ApplyOptions(opt, is_new)
     if opt.manifest_url:
       r = m.GetRemote(m.remote.name)
       r.url = opt.manifest_url
@@ -173,6 +196,7 @@ to update the working directory files.
     if opt.mirror:
       if is_new:
         m.config.SetString('repo.mirror', 'true')
+        m.config.ClearCache()
       else:
         print >>sys.stderr, 'fatal: --mirror not supported on existing client'
         sys.exit(1)
@@ -190,14 +214,33 @@ to update the working directory files.
     if opt.manifest_branch:
       m.MetaBranchSwitch(opt.manifest_branch)
 
+    if is_new and SubmoduleManifest.IsBare(m):
+      new = self.GetManifest(reparse=True, type=SubmoduleManifest)
+      if m.gitdir != new.manifestProject.gitdir:
+        os.rename(m.gitdir, new.manifestProject.gitdir)
+        new = self.GetManifest(reparse=True, type=SubmoduleManifest)
+      m = new.manifestProject
+      self._ApplyOptions(opt, is_new)
+
+    if not is_new:
+      # Force the manifest to load if it exists, the old graph
+      # may be needed inside of _ReloadManifest().
+      #
+      self.manifest.projects
+
     syncbuf = SyncBuffer(m.config)
     m.Sync_LocalHalf(syncbuf)
     syncbuf.Finish()
 
-    if is_new or m.CurrentBranch is None:
-      if not m.StartBranch('default'):
-        print >>sys.stderr, 'fatal: cannot create default in manifest'
-        sys.exit(1)
+    if isinstance(self.manifest, XmlManifest):
+      self._LinkManifest(opt.manifest_name)
+    _ReloadManifest(self)
+
+    self._ApplyOptions(opt, is_new)
+
+    if not self.manifest.InitBranch():
+      print >>sys.stderr, 'fatal: cannot create branch in manifest'
+      sys.exit(1)
 
   def _LinkManifest(self, name):
     if not name:
@@ -317,7 +360,6 @@ to update the working directory files.
   def Execute(self, opt, args):
     git_require(MIN_GIT_VERSION, fail=True)
     self._SyncManifest(opt)
-    self._LinkManifest(opt.manifest_name)
 
     if os.isatty(0) and os.isatty(1) and not self.manifest.IsMirror:
       if opt.config_name or self._ShouldConfigureUser():

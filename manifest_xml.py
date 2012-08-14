@@ -20,12 +20,19 @@ import sys
 import urlparse
 import xml.dom.minidom
 
-from git_config import GitConfig, IsId
-from project import RemoteSpec, Project, MetaProject, R_HEADS, HEAD
+from git_config import GitConfig
+from git_config import IsId
+from manifest import Manifest
+from project import RemoteSpec
+from project import Project
+from project import MetaProject
+from project import R_HEADS
+from project import HEAD
 from error import ManifestParseError
 
 MANIFEST_FILE_NAME = 'manifest.xml'
 LOCAL_MANIFEST_NAME = 'local_manifest.xml'
+R_M = 'refs/remotes/m/'
 
 urlparse.uses_relative.extend(['ssh', 'git'])
 urlparse.uses_netloc.extend(['ssh', 'git'])
@@ -69,19 +76,13 @@ class _XmlRemote(object):
       remoteName = self.remoteAlias
     return RemoteSpec(remoteName, url, self.reviewUrl)
 
-class XmlManifest(object):
+class XmlManifest(Manifest):
   """manages the repo configuration file"""
 
   def __init__(self, repodir):
-    self.repodir = os.path.abspath(repodir)
-    self.topdir = os.path.dirname(self.repodir)
-    self.manifestFile = os.path.join(self.repodir, MANIFEST_FILE_NAME)
-    self.globalConfig = GitConfig.ForUser()
+    Manifest.__init__(self, repodir)
 
-    self.repoProject = MetaProject(self, 'repo',
-      gitdir   = os.path.join(repodir, 'repo/.git'),
-      worktree = os.path.join(repodir, 'repo'))
-
+    self._manifestFile = os.path.join(repodir, MANIFEST_FILE_NAME)
     self.manifestProject = MetaProject(self, 'manifests',
       gitdir   = os.path.join(repodir, 'manifests.git'),
       worktree = os.path.join(repodir, 'manifests'))
@@ -95,13 +96,13 @@ class XmlManifest(object):
     if not os.path.isfile(path):
       raise ManifestParseError('manifest %s not found' % name)
 
-    old = self.manifestFile
+    old = self._manifestFile
     try:
-      self.manifestFile = path
+      self._manifestFile = path
       self._Unload()
       self._Load()
     finally:
-      self.manifestFile = old
+      self._manifestFile = old
 
   def Link(self, name):
     """Update the repo metadata to use a different manifest.
@@ -109,9 +110,9 @@ class XmlManifest(object):
     self.Override(name)
 
     try:
-      if os.path.exists(self.manifestFile):
-        os.remove(self.manifestFile)
-      os.symlink('manifests/%s' % name, self.manifestFile)
+      if os.path.exists(self._manifestFile):
+        os.remove(self._manifestFile)
+      os.symlink('manifests/%s' % name, self._manifestFile)
     except OSError, e:
       raise ManifestParseError('cannot link manifest %s' % name)
 
@@ -266,9 +267,15 @@ class XmlManifest(object):
     self._Load()
     return self._manifest_server
 
-  @property
-  def IsMirror(self):
-    return self.manifestProject.config.GetBoolean('repo.mirror')
+  def InitBranch(self):
+    m = self.manifestProject
+    if m.CurrentBranch is None:
+      return m.StartBranch('default')
+    return True
+
+  def SetMRefs(self, project):
+    if self.branch:
+      project._InitAnyMRef(R_M + self.branch)
 
   def _Unload(self):
     self._loaded = False
@@ -283,7 +290,10 @@ class XmlManifest(object):
   def _Load(self):
     if not self._loaded:
       m = self.manifestProject
-      b = m.GetBranch(m.CurrentBranch).merge
+      b = m.GetBranch(m.CurrentBranch)
+      if b.remote and b.remote.name:
+        m.remote.name = b.remote.name
+      b = b.merge
       if b is not None and b.startswith(R_HEADS):
         b = b[len(R_HEADS):]
       self.branch = b
@@ -294,9 +304,18 @@ class XmlManifest(object):
 
       local = os.path.join(self.repodir, LOCAL_MANIFEST_NAME)
       if os.path.exists(local):
+<<<<<<< HEAD   (17f85e Omit all default groups when generating a manifest)
         nodes.append(self._ParseManifestXml(local, self.repodir))
 
       self._ParseManifest(nodes)
+=======
+        try:
+          real = self._manifestFile
+          self._manifestFile = local
+          self._ParseManifest(False)
+        finally:
+          self._manifestFile = real
+>>>>>>> BRANCH (e7a3bc Merge branch 'stable')
 
       if self.IsMirror:
         self._AddMetaProjectMirror(self.repoProject)
@@ -304,14 +323,31 @@ class XmlManifest(object):
 
       self._loaded = True
 
+<<<<<<< HEAD   (17f85e Omit all default groups when generating a manifest)
   def _ParseManifestXml(self, path, include_root):
     root = xml.dom.minidom.parse(path)
+=======
+  def _ParseManifest(self, is_root_file):
+    root = xml.dom.minidom.parse(self._manifestFile)
+>>>>>>> BRANCH (e7a3bc Merge branch 'stable')
     if not root or not root.childNodes:
+<<<<<<< HEAD   (17f85e Omit all default groups when generating a manifest)
       raise ManifestParseError("no root node in %s" % (path,))
+=======
+      raise ManifestParseError, \
+            "no root node in %s" % \
+            self._manifestFile
+>>>>>>> BRANCH (e7a3bc Merge branch 'stable')
 
     config = root.childNodes[0]
     if config.nodeName != 'manifest':
+<<<<<<< HEAD   (17f85e Omit all default groups when generating a manifest)
       raise ManifestParseError("no <manifest> in %s" % (path,))
+=======
+      raise ManifestParseError, \
+            "no <manifest> in %s" % \
+            self._manifestFile
+>>>>>>> BRANCH (e7a3bc Merge branch 'stable')
 
     nodes = []
     for node in config.childNodes:
@@ -410,11 +446,60 @@ class XmlManifest(object):
               'project %s not found' %
               (name))
 
+<<<<<<< HEAD   (17f85e Omit all default groups when generating a manifest)
         # If the manifest removes the hooks project, treat it as if it deleted
         # the repo-hooks element too.
         if self._repo_hooks_project and (self._repo_hooks_project.name == name):
           self._repo_hooks_project = None
+=======
+    for node in config.childNodes:
+      if node.nodeName == 'remote':
+        remote = self._ParseRemote(node)
+        if self._remotes.get(remote.name):
+          raise ManifestParseError, \
+                'duplicate remote %s in %s' % \
+                (remote.name, self._manifestFile)
+        self._remotes[remote.name] = remote
+>>>>>>> BRANCH (e7a3bc Merge branch 'stable')
 
+<<<<<<< HEAD   (17f85e Omit all default groups when generating a manifest)
+=======
+    for node in config.childNodes:
+      if node.nodeName == 'default':
+        if self._default is not None:
+          raise ManifestParseError, \
+                'duplicate default in %s' % \
+                (self._manifestFile)
+        self._default = self._ParseDefault(node)
+    if self._default is None:
+      self._default = _Default()
+
+    for node in config.childNodes:
+      if node.nodeName == 'notice':
+        if self._notice is not None:
+          raise ManifestParseError, \
+                'duplicate notice in %s' % \
+                (self.manifestFile)
+        self._notice = self._ParseNotice(node)
+
+    for node in config.childNodes:
+      if node.nodeName == 'manifest-server':
+        url = self._reqatt(node, 'url')
+        if self._manifest_server is not None:
+            raise ManifestParseError, \
+                'duplicate manifest-server in %s' % \
+                (self.manifestFile)
+        self._manifest_server = url
+
+    for node in config.childNodes:
+      if node.nodeName == 'project':
+        project = self._ParseProject(node)
+        if self._projects.get(project.name):
+          raise ManifestParseError, \
+                'duplicate project %s in %s' % \
+                (project.name, self._manifestFile)
+        self._projects[project.name] = project
+>>>>>>> BRANCH (e7a3bc Merge branch 'stable')
 
   def _AddMetaProjectMirror(self, m):
     name = None
@@ -541,7 +626,7 @@ class XmlManifest(object):
     if remote is None:
       raise ManifestParseError, \
             "no remote for project %s within %s" % \
-            (name, self.manifestFile)
+            (name, self._manifestFile)
 
     revisionExpr = node.getAttribute('revision')
     if not revisionExpr:
@@ -549,7 +634,7 @@ class XmlManifest(object):
     if not revisionExpr:
       raise ManifestParseError, \
             "no revision for project %s within %s" % \
-            (name, self.manifestFile)
+            (name, self._manifestFile)
 
     path = node.getAttribute('path')
     if not path:
@@ -557,7 +642,7 @@ class XmlManifest(object):
     if path.startswith('/'):
       raise ManifestParseError, \
             "project %s path cannot be absolute in %s" % \
-            (name, self.manifestFile)
+            (name, self._manifestFile)
 
     rebase = node.getAttribute('rebase')
     if not rebase:
@@ -635,7 +720,7 @@ class XmlManifest(object):
     if not v:
       raise ManifestParseError, \
             "remote %s not defined in %s" % \
-            (name, self.manifestFile)
+            (name, self._manifestFile)
     return v
 
   def _reqatt(self, node, attname):
@@ -646,5 +731,5 @@ class XmlManifest(object):
     if not v:
       raise ManifestParseError, \
             "no %s in <%s> within %s" % \
-            (attname, node.nodeName, self.manifestFile)
+            (attname, node.nodeName, self._manifestFile)
     return v

@@ -36,13 +36,15 @@ from git_config import init_ssh, close_ssh
 from command import InteractiveCommand
 from command import MirrorSafeCommand
 from command import PagedCommand
+<<<<<<< HEAD   (17f85e Omit all default groups when generating a manifest)
 from subcmds.version import Version
 from editor import Editor
 from error import DownloadError
+=======
+>>>>>>> BRANCH (e7a3bc Merge branch 'stable')
 from error import ManifestInvalidRevisionError
 from error import NoSuchProjectError
 from error import RepoChangedException
-from manifest_xml import XmlManifest
 from pager import RunPager
 
 from subcmds import all as all_commands
@@ -109,8 +111,6 @@ class _Repo(object):
       return 1
 
     cmd.repodir = self.repodir
-    cmd.manifest = XmlManifest(cmd.repodir)
-    Editor.globalConfig = cmd.manifest.globalConfig
 
     if not isinstance(cmd, MirrorSafeCommand) and cmd.manifest.IsMirror:
       print >>sys.stderr, \

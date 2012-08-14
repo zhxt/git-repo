@@ -33,7 +33,7 @@ from error import ManifestInvalidRevisionError
 from progress import Progress
 from trace import IsTrace, Trace
 
-from git_refs import GitRefs, HEAD, R_HEADS, R_TAGS, R_PUB, R_M
+from git_refs import GitRefs, HEAD, R_HEADS, R_TAGS, R_PUB
 
 def _lwrite(path, content):
   lock = '%s.lock' % path
@@ -964,7 +964,7 @@ class Project(object):
       return False
 
     if self.worktree:
-      self._InitMRef()
+      self.manifest.SetMRefs(self)
     else:
       self._InitMirrorHead()
       try:
@@ -1702,10 +1702,6 @@ class Project(object):
         remote.ResetFetch(mirror=True)
       remote.Save()
 
-  def _InitMRef(self):
-    if self.manifest.branch:
-      self._InitAnyMRef(R_M + self.manifest.branch)
-
   def _InitMirrorHead(self):
     self._InitAnyMRef(HEAD)
 
@@ -1724,9 +1720,40 @@ class Project(object):
         msg = 'manifest set to %s' % self.revisionExpr
         self.bare_git.symbolic_ref('-m', msg, ref, dst)
 
+  def _LinkWorkTree(self, relink=False):
+    dotgit = os.path.join(self.worktree, '.git')
+    if not relink:
+      os.makedirs(dotgit)
+
+    for name in ['config',
+                 'description',
+                 'hooks',
+                 'info',
+                 'logs',
+                 'objects',
+                 'packed-refs',
+                 'refs',
+                 'rr-cache',
+                 'svn']:
+      try:
+        src = os.path.join(self.gitdir, name)
+        dst = os.path.join(dotgit, name)
+        if relink:
+          os.remove(dst)
+        if os.path.islink(dst) or not os.path.exists(dst):
+          os.symlink(relpath(src, dst), dst)
+        else:
+          raise GitError('cannot overwrite a local work tree')
+      except OSError, e:
+        if e.errno == errno.EPERM:
+          raise GitError('filesystem must support symlinks')
+        else:
+          raise
+
   def _InitWorkTree(self):
     dotgit = os.path.join(self.worktree, '.git')
     if not os.path.exists(dotgit):
+<<<<<<< HEAD   (17f85e Omit all default groups when generating a manifest)
       os.makedirs(dotgit)
 
       for name in ['config',
@@ -1751,6 +1778,9 @@ class Project(object):
             raise GitError('filesystem must support symlinks')
           else:
             raise
+=======
+      self._LinkWorkTree()
+>>>>>>> BRANCH (e7a3bc Merge branch 'stable')
 
       _lwrite(os.path.join(dotgit, HEAD), '%s\n' % self.GetRevisionId())
 
@@ -2069,15 +2099,17 @@ class SyncBuffer(object):
 class MetaProject(Project):
   """A special project housed under .repo.
   """
-  def __init__(self, manifest, name, gitdir, worktree):
+  def __init__(self, manifest, name, gitdir, worktree, relpath=None):
     repodir = manifest.repodir
+    if relpath is None:
+      relpath = '.repo/%s' % name
     Project.__init__(self,
                      manifest = manifest,
                      name = name,
                      gitdir = gitdir,
                      worktree = worktree,
                      remote = RemoteSpec('origin'),
-                     relpath = '.repo/%s' % name,
+                     relpath = relpath,
                      revisionExpr = 'refs/heads/master',
                      revisionId = None,
                      groups = None)
@@ -2086,10 +2118,12 @@ class MetaProject(Project):
     if self.Exists:
       cb = self.CurrentBranch
       if cb:
-        base = self.GetBranch(cb).merge
-        if base:
-          self.revisionExpr = base
+        cb = self.GetBranch(cb)
+        if cb.merge:
+          self.revisionExpr = cb.merge
           self.revisionId = None
+        if cb.remote and cb.remote.name:
+          self.remote.name = cb.remote.name
 
   def MetaBranchSwitch(self, target):
     """ Prepare MetaProject for manifest branch switch

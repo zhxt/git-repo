@@ -165,7 +165,11 @@ See 'repo help --all' for a complete list of recognized commands.
         print >>sys.stderr, "repo: '%s' is not a repo command." % name
         sys.exit(1)
 
+<<<<<<< HEAD   (17f85e Omit all default groups when generating a manifest)
       cmd.manifest = self.manifest
+=======
+      cmd.repodir = self.repodir
+>>>>>>> BRANCH (e7a3bc Merge branch 'stable')
       self._PrintCommandHelp(cmd)
 
     else:
