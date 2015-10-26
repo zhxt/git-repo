@@ -1,0 +1,7 @@
+Code-Review+2: Shawn Pearce <sop@google.com>
+Verified+1: Shawn Pearce <sop@google.com>
+Submitted-by: Shawn Pearce <sop@google.com>
+Submitted-at: Mon, 26 Oct 2015 19:39:04 +0000
+Reviewed-on: https://gerrit-review.googlesource.com/71793
+Project: git-repo
+Branch: refs/heads/master
